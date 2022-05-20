@@ -5,6 +5,9 @@
     "author": "Microsoft",
     "license": "MIT",
     "main": "index.js",
+    "engines": {
+        "node": "14.x"
+    },
     "scripts": {
         "start": "node ./index.js",
         "watch": "nodemon ./index.js",
