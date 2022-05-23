@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-const { ConfirmPrompt, DialogSet, DialogTurnStatus, OAuthPrompt, WaterfallDialog } = require('botbuilder-dialogs');
+const { ConfirmPrompt, DialogSet, DialogTurnStatus, OAuthPrompt, WaterfallDialog, ChoicePrompt, ChoiceFactory, TextPrompt } = require('botbuilder-dialogs');
 
 const { LogoutDialog } = require('./logoutDialog');
 
@@ -10,10 +10,15 @@ const MAIN_DIALOG = 'MainDialog';
 const MAIN_WATERFALL_DIALOG = 'MainWaterfallDialog';
 const OAUTH_PROMPT = 'OAuthPrompt';
 
+const CHOICE_PROMPT = 'ChoiceDialog';
+const TEXT_PROMPT = 'TextPrompt';
+
 class MainDialog extends LogoutDialog {
     constructor() {
         super(MAIN_DIALOG, process.env.connectionName);
 
+        this.addDialog(new TextPrompt(TEXT_PROMPT));
+        this.addDialog(new ChoicePrompt(CHOICE_PROMPT));
         this.addDialog(new OAuthPrompt(OAUTH_PROMPT, {
             connectionName: process.env.connectionName,
             text: 'Please Sign In',
@@ -22,10 +27,15 @@ class MainDialog extends LogoutDialog {
         }));
         this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
         this.addDialog(new WaterfallDialog(MAIN_WATERFALL_DIALOG, [
-            this.promptStep.bind(this),
-            this.loginStep.bind(this),
-            this.displayTokenPhase1.bind(this),
-            this.displayTokenPhase2.bind(this)
+            this.optionStep.bind(this),
+            this.optionInputStep.bind(this),
+            // this.promptStep.bind(this),
+            this.loginValidationStep.bind(this),
+            this.orderHistoryStep.bind(this),
+            this.promptAdditionalHelpStep.bind(this),
+            this.transferToAgentStep.bind(this)
+            // this.displayTokenPhase1.bind(this),
+            // this.displayTokenPhase2.bind(this)
         ]));
 
         this.initialDialogId = MAIN_WATERFALL_DIALOG;
@@ -47,9 +57,102 @@ class MainDialog extends LogoutDialog {
         }
     }
 
+    async optionStep(stepContext) {
+        console.log('[optionStep]');
+        return await stepContext.prompt(CHOICE_PROMPT, {
+            prompt: 'Hello, I am your Virtual Assistant. How can I help you?',
+            choices: ChoiceFactory.toChoices(['Sales', 'Order History', 'Technical Support'])
+        });
+    }
+
+    async optionInputStep(stepContext) {
+        console.log('[optionInputStep]');
+        const optionResponse = stepContext.result;
+
+        if (optionResponse.value === 'Sales') {
+            const command = {
+                type: 0,
+                context: {
+                    BotHandoffTopic: 'Foo'
+                },
+                Type: 0,
+                Context: {
+                    BotHandoffTopic: 'Foo'
+                }
+            };
+            await stepContext.context.sendActivity({
+                text: 'Transferring to agent...',
+                channelData: {
+                    tags: JSON.stringify(command)
+                }
+            });
+        } else if (optionResponse.value === 'Order History') {
+            console.log('[Order History]');
+            // return await stepContext.endDialog();
+            await stepContext.context.sendActivity("Got it! To access your order history, I'll need you to verify your account.");
+            return await stepContext.beginDialog(OAUTH_PROMPT);
+        } else if (optionResponse.value === 'Technical Support') {
+
+        }
+
+        return await stepContext.endDialog();
+    }
+
+    async orderHistoryStep(stepContext) {
+        console.log('[orderHistoryStep]');
+        await stepContext.context.sendActivity('Last Order: Apr 20 2020, Coffee Machine, $149.99');
+        return await stepContext.continueDialog();
+    }
+
+    async promptAdditionalHelpStep(stepContext) {
+        console.log('[promptAdditionalHelpStep]');
+        return await stepContext.prompt(TEXT_PROMPT, 'Is there anything else I can help you with?');
+    }
+
+    async transferToAgentStep(stepContext) {
+        console.log('[transferToAgentStep]');
+        const command = {
+            type: 0,
+            context: {
+                BotHandoffTopic: 'Foo'
+            },
+            Type: 0,
+            Context: {
+                BotHandoffTopic: 'Foo'
+            }
+        };
+        await stepContext.context.sendActivity({
+            text: 'Sure, let me transfer you now...',
+            channelData: {
+                tags: JSON.stringify(command)
+            }
+        });
+        return await stepContext.endDialog();
+    }
+
     async promptStep(stepContext) {
         console.log('[promptStep]');
+        await stepContext.context.sendActivity('Thank you for verifiying your account. Pulling up your information now...');
         return await stepContext.beginDialog(OAUTH_PROMPT);
+    }
+
+    async loginValidationStep(stepContext) {
+        console.log('[loginValidationStep]');
+        // console.log(stepContext);
+        // Get the token from the previous step. Note that we could also have gotten the
+        // token directly from the prompt itself. There is an example of this in the next method.
+        const tokenResponse = stepContext.result;
+        // await stepContext.context.sendActivity('Thank you for verifiying your account. Pulling up your information now...');
+        if (tokenResponse && tokenResponse.token) {
+            await stepContext.context.sendActivity('Thank you for verifiying your account. Pulling up your information now...');
+            // await stepContext.context.sendActivity('You are now logged in.');
+            // return await stepContext.endDialog();
+        } else {
+            await stepContext.context.sendActivity('Login was not successful please try again.');
+            return await stepContext.beginDialog(OAUTH_PROMPT);
+        }
+
+        return await stepContext.continueDialog();
     }
 
     async loginStep(stepContext) {
