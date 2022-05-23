@@ -5,6 +5,8 @@ const { ConfirmPrompt, DialogSet, DialogTurnStatus, OAuthPrompt, WaterfallDialog
 
 const { LogoutDialog } = require('./logoutDialog');
 
+const {EventFactory} = require('botbuilder');
+
 const CONFIRM_PROMPT = 'ConfirmPrompt';
 const MAIN_DIALOG = 'MainDialog';
 const MAIN_WATERFALL_DIALOG = 'MainWaterfallDialog';
@@ -23,7 +25,7 @@ class MainDialog extends LogoutDialog {
             connectionName: process.env.connectionName,
             text: 'Please Sign In',
             title: 'Sign In',
-            timeout: 20000 // Number of milliseconds the prompt waits for user to authenticate
+            timeout: 300000 // Number of milliseconds the prompt waits for user to authenticate
         }));
         this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
         this.addDialog(new WaterfallDialog(MAIN_WATERFALL_DIALOG, [
@@ -68,24 +70,21 @@ class MainDialog extends LogoutDialog {
     async optionInputStep(stepContext) {
         console.log('[optionInputStep]');
         const optionResponse = stepContext.result;
-
         if (optionResponse.value === 'Sales') {
-            const command = {
-                type: 0,
+            const handoffContext = {
                 context: {
-                    BotHandoffTopic: 'Foo'
+                    BotHandoffTopic: 'Sales'
                 },
-                Type: 0,
-                Context: {
-                    BotHandoffTopic: 'Foo'
-                }
+                messageToAgent: 'Issue Summary: Sales'
             };
+
+            const handoffEvent = EventFactory.createHandoffInitiation(stepContext.context, handoffContext);
+
             await stepContext.context.sendActivity({
-                text: 'Transferring to agent...',
-                channelData: {
-                    tags: JSON.stringify(command)
-                }
+                text: 'Transferring to agent...'
             });
+
+            await stepContext.context.sendActivity(handoffEvent);
         } else if (optionResponse.value === 'Order History') {
             console.log('[Order History]');
             // return await stepContext.endDialog();
@@ -111,22 +110,21 @@ class MainDialog extends LogoutDialog {
 
     async transferToAgentStep(stepContext) {
         console.log('[transferToAgentStep]');
-        const command = {
-            type: 0,
+        const handoffContext = {
             context: {
-                BotHandoffTopic: 'Foo'
+                BotHandoffTopic: 'Order History'
             },
-            Type: 0,
-            Context: {
-                BotHandoffTopic: 'Foo'
-            }
+            messageToAgent: 'Issue Summary: Speak with Sales rep'
         };
+
+        const handoffEvent = EventFactory.createHandoffInitiation(stepContext.context, handoffContext);
+
         await stepContext.context.sendActivity({
-            text: 'Sure, let me transfer you now...',
-            channelData: {
-                tags: JSON.stringify(command)
-            }
+            text: 'Sure, let me transfer you now...'
         });
+
+        await stepContext.context.sendActivity(handoffEvent);
+
         return await stepContext.endDialog();
     }
 
