@@ -25,7 +25,8 @@ class MainDialog extends LogoutDialog {
             connectionName: process.env.connectionName,
             text: 'Please Sign In',
             title: 'Sign In',
-            timeout: 300000 // Number of milliseconds the prompt waits for user to authenticate
+            timeout: 300000, // Number of milliseconds the prompt waits for user to authenticate
+            showSignInLink: true
         }));
         this.addDialog(new ConfirmPrompt(CONFIRM_PROMPT));
         this.addDialog(new WaterfallDialog(MAIN_WATERFALL_DIALOG, [
