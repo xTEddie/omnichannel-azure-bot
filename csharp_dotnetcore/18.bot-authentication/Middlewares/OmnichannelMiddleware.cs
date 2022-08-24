@@ -23,11 +23,8 @@ namespace Microsoft.BotBuilderSamples.Middlewares
         {
             turnContext.OnSendActivities((newContext, activities, nextSend) =>
             {
-                Console.WriteLine("[OmnichannelMiddleware][OnSendActivities]");
                 foreach (var activity in activities.Where(a => a.Type == ActivityTypes.Message))
                 {
-                    Console.WriteLine(activity);
-
                     if (activity.ChannelData != null)
                     {
                         (activity as IActivity).ChannelData[DeliveryMode] = Bridged;
